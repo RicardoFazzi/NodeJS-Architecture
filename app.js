@@ -7,6 +7,9 @@ var bodyParser = require('body-parser');
 
 var routes = require('./routes/index');
 var users = require('./routes/users');
+var temperatures = require('./routes/temperatures');
+
+var kafkaProducer = require('./kafka/producer.js');
 
 var app = express();
 
@@ -24,6 +27,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 app.use('/', routes);
 app.use('/users', users);
+app.use('/temperatures', temperatures);
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
