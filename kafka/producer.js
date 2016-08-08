@@ -2,7 +2,7 @@ var kafka = require('kafka-node'),
     Producer = kafka.Producer,
     client = new kafka.Client(),
     producer = new Producer(client),
-    payloads = [{topic: 'test' ,partition: 0}];
+    payloads = [{topic: 'temperature_topic' ,partition: 0}];
 
 process.on('temperature', function (temperature) {
     payloads[0].messages = temperature;

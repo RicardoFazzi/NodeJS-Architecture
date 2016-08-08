@@ -1,5 +1,8 @@
 var express = require('express');
 var bodyParser = require('body-parser');
+var TemperatureResume = require('../models/temperatureResume');
+var Alert = require('../models/alert');
+var Range = require('../models/range');
 
 var temperatureRoute = express.Router();
 temperatureRoute.use(bodyParser.json());
@@ -12,59 +15,62 @@ temperatureRoute.route('/')
             '","tipoProducto":"' + req.body.tipoProducto + '"}';
         process.emit('temperature', temp);
         return res.status(200).json(temp);
+    })
+    .get(function (req, res, next) {
+        var date = new Date();
+        date.setHours(0, 0, 0, 0);
+        var tomorrow = new Date(date.getTime() + (24 * 60 * 60 * 1000));
+
+        TemperatureResume.find({lastUpdated: {$gte: date, $lte: tomorrow}}, function (err, resume) {
+            if (err) throw err;
+            return res.status(200).json({resume: resume});
+        })
+
     });
-/*.get(function (req, res, next) {
- var date = new Date();
- date.setHours(0, 0, 0, 0);
- var tomorrow = new Date(date.getTime() + (24 * 60 * 60 * 1000));
+temperatureRoute.route('/:sensorId')
+    .get(function (req, res, next) {
+        var date = new Date();
+        date.setHours(0, 0, 0, 0);
+        var tomorrow = new Date(date.getTime() + (24 * 60 * 60 * 1000));
+        Alert.find({})
+            .populate('range')
+            .exec(function (err, alerts) {
+                if (err) throw err;
+                var temperatureAlert;
+                if (alerts.length > 0) {
+                    for (var i = 0; i < alerts.length; i++) {
+                        if (alerts[i].range.name == 'Temperature') {
+                            temperatureAlert = alerts[i];
+                        }
+                    }
+                }
+                TemperatureResume.find({lastUpdated: {$gte: date, $lte: tomorrow}, sensorId: req.params.sensorId}, function (err, resume) {
+                    if (err) throw err;
+                    var temperatureResume;
+                    if (resume.length > 0) {
+                        temperatureResume = resume[0];
+                    }
+                    switch (temperatureAlert.behavior) {
+                        case "<<":
+                            if(temperatureResume.lastValue < temperatureAlert.range.lowerLimit){
+                                temperatureResume.color = "Rojo";
+                            }else if(temperatureResume.lastValue < temperatureAlert.range.upperLimit){
+                                temperatureResume.color = "Amarillo";
+                            }else temperatureResume.color = "Verde";
+                            break;
+                        case ">>":
+                            if(temperatureResume.lastValue > temperatureAlert.range.lowerLimit){
+                                temperatureResume.color = "Amarillo";
+                            }else if(temperatureResume.lastValue > temperatureAlert.range.upperLimit){
+                                temperatureResume.color = "Rojo";
+                            }else temperatureResume.color = "Verde";
+                            break;
+                    }
+                    return res.status(200).json({resume: temperatureResume});
+                })
+            })
 
- TemperatureResume.find({lastUpdated: {$gte: date, $lte: tomorrow}}, function (err, resume) {
- if (err) throw err;
- return res.status(200).json({resume: resume});
- })
-
- })*/
-
-/*Reload.find({}, function (err, reload) {
- if (err) throw err;
- var reload = reload[0];
- if (reload) {
- reload.count++;
- reload.accumulated += req.body.recharge;
- if (req.body.recharge > reload.maximum) {
- reload.maximum = req.body.recharge;
- }
- if (req.body.recharge < reload.minimum) {
- reload.minimum = req.body.recharge;
- }
- reload.date = new Date();
-
- reload.save(function (err, reload) {
- if (err) {
- return res.status(500).json(err);
- }
- console.log('Reload updated!!');
- return res.status(200).json(reload);
- });
- } else {
- var reload = new Reload({
- count: 5,
- accumulated: 150,
- date: new Date(),
- maximum: 50,
- minimum: 10
- });
-
- reload.save(function (err, reload) {
- if (err) {
- return res.status(500).json(err);
- }
- console.log('Reload created!');
- return res.status(200).json(reload);
- });
- }
- });*/
-
+    });
 
 module.exports = temperatureRoute;
 
